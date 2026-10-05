@@ -1,6 +1,3 @@
-from cmath import phase
-from os import name
-from sys import stdout
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.auth import LoginRequest, RegisterRequest
@@ -32,7 +29,7 @@ def register(db: Session, data: RegisterRequest):
     # 验证用户名和密码是否正确
     user = db.query(User).filter(User.username == data.username).first()
     if user:
-        raise BusinessException(message="账号已存在")
+        raise BusinessException(code=400, message="账号已存在")
     user_model = User(
         username=data.username,
         password=hash_password(data.password),
@@ -44,4 +41,4 @@ def register(db: Session, data: RegisterRequest):
 
     db.add(user_model)
     db.commit()
-    db.flush
+    db.flush()
