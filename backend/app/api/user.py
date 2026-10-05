@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 from app.models.user import User
+from app.schemas.user import UserResponse
 from app.dependencies.auth import get_current_user
-from app.schemas.user import UserResponse 
+
 
 router  = APIRouter(prefix="/user", tags=["用户信息接口"])#生成接口文档
 
