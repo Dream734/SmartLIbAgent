@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-
+from fastapi.staticfiles import StaticFiles
+from app.config import UPLOAD_DIR
 from app.models.user import User  # noqa: F401
 from app.database import engine, Base
 from app.api import api
@@ -42,6 +43,9 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 # 注册全局异常处理器,必须放在最后
 app.add_exception_handler(Exception, global_exception_handler)
+
+# 挂载静态的文件目录   http://127.0.0.1:8000/uploads/xxx.jpg
+app.mount("/uploads",StaticFiles(directory=UPLOAD_DIR),name="uploads")
 
 
 @app.get("/")
