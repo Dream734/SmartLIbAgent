@@ -2,7 +2,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOAD_DIR
-from app.models.user import User  # noqa: F401
+from app.models import (  # noqa: F401
+    User,
+    SeatArea,
+    Seat,
+    SeatReservation,
+    BookCategory,
+    Book,
+    BorrowRecord,
+)
 from app.database import engine, Base
 from app.api import api
 from starlette.middleware.cors import CORSMiddleware

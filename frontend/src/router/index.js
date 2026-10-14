@@ -11,7 +11,15 @@ const router = createRouter({
       component: () => import('@/layouts/Layout.vue'),
       children: [
         { path: 'home', name: 'Home', component: () => import('@/views/Home.vue') },
-        { path: 'lab', name: 'Lab', component: () => import('@/views/lab.vue') },
+        { path: 'seat', name: 'Seat', component: () => import('@/views/Seat.vue') },
+        { path: 'books', name: 'Books', component: () => import('@/views/Books.vue') },
+        { path: 'books/:id', name: 'BookDetail', component: () => import('@/views/BookDetail.vue') },
+        { path: 'my', name: 'My', component: () => import('@/views/My.vue') },
+        { path: 'admin/areas', name: 'AdminAreas', component: () => import('@/views/AdminAreas.vue') },
+        { path: 'admin/seats', name: 'AdminSeats', component: () => import('@/views/AdminSeats.vue') },
+        { path: 'admin/categories', name: 'AdminCategories', component: () => import('@/views/AdminCategories.vue') },
+        { path: 'admin/books', name: 'AdminBooks', component: () => import('@/views/AdminBooks.vue') },
+        { path: 'admin/borrows', name: 'AdminBorrows', component: () => import('@/views/AdminBorrows.vue') },
         { path: 'profile', name: 'Profile', component: () => import('@/views/Profile.vue') },
         { path: 'password', name: 'Password', component: () => import('@/views/Password.vue') },
         { path: 'user', name: 'User', component: () => import('@/views/User.vue') }

@@ -6,7 +6,7 @@
       >
         <div style="flex: 1; display: flex; align-items: center; font-size: 24px; font-weight: bold;">
           <img src="@/assets/imgs/logo.png" style="height: 40px; margin-left: 10px;" />
-          <div style="margin-left: 10px;">智能实验室预约系统</div>
+          <div style="margin-left: 10px;">图书馆选座借阅系统</div>
         </div>
 
         <div style="display: flex; align-items: center;">
@@ -38,15 +38,32 @@
               <span>系统首页</span>
             </el-menu-item>
 
-            <el-menu-item index="/lab">
-              <el-icon><House /></el-icon>
-              <span>实验室列表</span>
+            <el-menu-item index="/seat">
+              <el-icon><Calendar /></el-icon>
+              <span>座位预约</span>
             </el-menu-item>
 
-            <el-menu-item index="/equ">
-              <el-icon><Setting /></el-icon>
-              <span>设备列表管理</span>
+            <el-menu-item index="/books">
+              <el-icon><Collection /></el-icon>
+              <span>图书预借</span>
             </el-menu-item>
+
+            <el-menu-item index="/my">
+              <el-icon><Tickets /></el-icon>
+              <span>我的预约</span>
+            </el-menu-item>
+
+            <el-sub-menu index="admin" v-if="userInfo?.role === 'admin'">
+              <template #title>
+                <el-icon><Setting /></el-icon>
+                <span>系统管理</span>
+              </template>
+              <el-menu-item index="/admin/areas">区域管理</el-menu-item>
+              <el-menu-item index="/admin/seats">座位管理</el-menu-item>
+              <el-menu-item index="/admin/categories">分类管理</el-menu-item>
+              <el-menu-item index="/admin/books">图书管理</el-menu-item>
+              <el-menu-item index="/admin/borrows">借阅处理</el-menu-item>
+            </el-sub-menu>
 
             <el-menu-item index="/user" v-if="userInfo?.role === 'admin'">
               <el-icon><User /></el-icon>
@@ -66,7 +83,7 @@
 </template>
 
 <script setup>
-import { Menu as IconMenu, Setting, User, House } from '@element-plus/icons-vue'
+import { Menu as IconMenu, User, Calendar, Collection, Tickets, Setting } from '@element-plus/icons-vue'
 import { logout } from '@/utils/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useUser } from '@/utils/user'

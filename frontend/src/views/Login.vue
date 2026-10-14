@@ -2,8 +2,8 @@
 
 <div class="login-container">
     <div class="login-box">
-        <h1 style="font-size:28px">实验室预约系统</h1>
-        <div style="margin-top: 5px; margin-bottom: 30px;">基于Agent智能预约系统</div>
+        <h1 style="font-size:28px">图书馆选座借阅系统</h1>
+        <div style="margin-top: 5px; margin-bottom: 30px;">选座与图书预借服务</div>
 
         <el-form ref="formRef":rules="rules" :model="form" label-width="0px" style="width: 100%">
             <el-form-item prop="username">
