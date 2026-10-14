@@ -16,4 +16,7 @@ class Response(BaseModel):
         return cls(code=code, message=message)
 
 
+class PageResponse(BaseModel):
+    list:Any = []
+    total : int = 0
         

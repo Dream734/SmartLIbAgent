@@ -1,16 +1,78 @@
 from fastapi import APIRouter, Depends
+from app.common.response import Response
 from app.models.user import User
-from app.schemas.user import UserResponse
-from app.dependencies.auth import get_current_user
-
+from app.schemas.user import PassWordUpdateRequest, UserCreateRequest, UserUpdateRequest
+from app.dependencies.auth import get_current_admin, get_current_user
+from app.services import user_service
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 router  = APIRouter(prefix="/user", tags=["用户信息接口"])#生成接口文档
 
-@router.get("/info", summary="获取当前登录用户信息  ")
+@router.get("/me", summary="获取当前登录用户信息  ")
 def get_current_user_info(current_user: User = Depends(get_current_user)):# 依赖注入，校验Token，获取当前登录用户信息
     """获取当前登录用户信息"""
-    return {
-        "code": 200,
-        "message": "获取用户信息成功",
-        "data": UserResponse.model_validate(current_user)
-    }
+    return Response.success(data=user_service.get_user_info(current_user))
+
+@router.put("/me")
+def update_user_info(
+    data:UserUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db:Session = Depends(get_db)
+    ):
+    """更新当前用户信息"""
+    res = user_service.update_user_info(db,current_user,data)
+    return Response.success(data = res)
+
+
+@router.put("/password")
+def update_password(
+    data: PassWordUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)):
+    """修改当前用户密码"""
+    user_service.update_password(db, current_user, data)
+    return Response.success()
+
+
+@router.get("/list")
+def get_user_list(
+    page: int = 1, 
+    page_size: int = 10, 
+    keywords: str | None = None ,
+    current_user:User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+    ):
+    res = user_service.get_user_page_list(db, page, page_size, keywords)
+    return Response.success(data=res)
+
+
+@router.post("")
+def create_user(
+    data: UserCreateRequest,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+    ):
+   res = user_service.create_user(db, data)
+   return Response.success(data=res)
+
+
+@router.put("/{user_id}")
+def update_user(
+    user_id: int,
+    data: UserUpdateRequest,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+    ):
+    res = user_service.update_user(db, user_id, data)
+    return Response.success(data=res)
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+    ):
+    res = user_service.delete_user(db, user_id, current_user)
+    return Response.success()

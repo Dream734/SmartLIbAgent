@@ -1,5 +1,3 @@
-import token
-from app.api import user
 from app.schemas.user import UserResponse
 from pydantic import BaseModel
 
