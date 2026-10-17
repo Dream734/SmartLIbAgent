@@ -136,7 +136,7 @@ def delete_book(db: Session, book_id: int):
         raise BusinessException(message="图书不存在")
     active = (
         db.query(BorrowRecord)
-        .filter(BorrowRecord.book_id == book_id, BorrowRecord.status.in_(["reserved", "borrowed"]))
+        .filter(BorrowRecord.book_id == book_id, BorrowRecord.status.in_(["reserved", "pickup", "borrowed"]))
         .first()
     )
     if active:

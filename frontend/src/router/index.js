@@ -22,7 +22,8 @@ const router = createRouter({
         { path: 'admin/borrows', name: 'AdminBorrows', component: () => import('@/views/AdminBorrows.vue') },
         { path: 'profile', name: 'Profile', component: () => import('@/views/Profile.vue') },
         { path: 'password', name: 'Password', component: () => import('@/views/Password.vue') },
-        { path: 'user', name: 'User', component: () => import('@/views/User.vue') }
+        { path: 'user', name: 'User', component: () => import('@/views/User.vue') },
+        {path: 'ai-chat',name: 'AIChat',component: () => import('@/views/AIChat.vue')}
       ]
     },
     { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },

@@ -49,7 +49,18 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面URL"><el-input v-model="form.cover" /></el-form-item>
+        <el-form-item label="封面">
+          <el-upload
+            class="cover-uploader"
+            :http-request="handleCoverUpload"
+            :show-file-list="false"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            :before-upload="beforeCoverUpload"
+          >
+            <img v-if="form.cover" :src="form.cover" class="cover-preview" />
+            <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="总册数"><el-input-number v-model="form.total" :min="0" /></el-form-item>
         <el-form-item label="可借数"><el-input-number v-model="form.available" :min="0" /></el-form-item>
         <el-form-item label="索书号"><el-input v-model="form.location" /></el-form-item>
@@ -68,6 +79,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCategoryList, getBookPageList, createBook, updateBook, deleteBook } from '@/api/book'
+import { uploadFileApi } from '@/api/file'
+import { Plus } from '@element-plus/icons-vue'
 
 const list = ref([])
 const total = ref(0)
@@ -111,6 +124,31 @@ const loadCategories = async () => {
 const handleSearch = () => {
   params.page = 1
   load()
+}
+
+const beforeCoverUpload = (file) => {
+  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!imageTypes.includes(file.type)) {
+    ElMessage.error('只能上传图片')
+    return false
+  }
+  if (file.size / 1024 / 1024 > 2) {
+    ElMessage.error('封面大小不能超过2M')
+    return false
+  }
+  return true
+}
+
+const handleCoverUpload = async ({ file }) => {
+  try {
+    const res = await uploadFileApi(file)
+    if (res.code === 200) {
+      form.cover = res.data?.url
+      ElMessage.success('封面上传成功')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败')
+  }
 }
 
 const resetForm = () =>
@@ -190,3 +228,23 @@ onMounted(() => {
   load()
 })
 </script>
+
+<style scoped>
+.cover-preview {
+  width: 100px;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.cover-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 100px;
+  height: 130px;
+  text-align: center;
+  line-height: 130px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+}
+</style>

@@ -38,6 +38,11 @@
               <span>系统首页</span>
             </el-menu-item>
 
+            <el-menu-item index="/ai-chat">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>AI智能助手</span>
+            </el-menu-item>
+
             <el-menu-item index="/seat">
               <el-icon><Calendar /></el-icon>
               <span>座位预约</span>
@@ -83,7 +88,7 @@
 </template>
 
 <script setup>
-import { Menu as IconMenu, User, Calendar, Collection, Tickets, Setting } from '@element-plus/icons-vue'
+import { Menu as IconMenu, User, Calendar, Collection, Tickets, Setting, ChatDotRound} from '@element-plus/icons-vue'
 import { logout } from '@/utils/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useUser } from '@/utils/user'

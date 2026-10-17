@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str 
     JWT_EXPIRE_HOURS: int = 24
     JWT_ALGORITHM: str = "HS256"
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_MODEL: str = "gpt-4o-mini"
 
 
     model_config = SettingsConfigDict(env_file=Base_DIR / ".env", env_file_encoding="utf-8")
