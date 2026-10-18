@@ -51,6 +51,14 @@ export function checkoutReservation(id) {
   return request({ url: `/api/seat/reservations/${id}/checkout`, method: 'post' })
 }
 
+export function approveReservation(id) {
+  return request({ url: `/api/seat/reservations/${id}/approve`, method: 'post' })
+}
+
+export function rejectReservation(id) {
+  return request({ url: `/api/seat/reservations/${id}/reject`, method: 'post' })
+}
+
 export function getReservationPageList(params) {
   return request({ url: '/api/seat/reservations', method: 'get', params })
 }

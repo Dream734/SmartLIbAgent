@@ -11,11 +11,12 @@
           value-format="YYYY-MM-DD"
           placeholder="选择日期"
           style="width: 160px; margin-right: 10px"
+          @change="loadSeats"
         />
-        <el-select v-model="startTime" placeholder="开始时间" style="width: 130px; margin-right: 10px">
+        <el-select v-model="startTime" placeholder="开始时间" style="width: 130px; margin-right: 10px" @change="loadSeats">
           <el-option v-for="s in slots" :key="s" :label="s" :value="s" />
         </el-select>
-        <el-select v-model="endTime" placeholder="结束时间" style="width: 130px; margin-right: 10px">
+        <el-select v-model="endTime" placeholder="结束时间" style="width: 130px; margin-right: 10px" @change="loadSeats">
           <el-option v-for="s in slots" :key="s" :label="s" :value="s" />
         </el-select>
         <el-button type="primary" @click="loadSeats">查询座位</el-button>
@@ -93,7 +94,12 @@ const loadSeats = async () => {
   }
   loading.value = true
   try {
-    const res = await getSeatList({ area_id: areaId.value })
+    const res = await getSeatList({
+      area_id: areaId.value,
+      date: date.value,
+      start_time: startTime.value || undefined,
+      end_time: endTime.value || undefined
+    })
     if (res.code === 200) seats.value = res.data
   } finally {
     loading.value = false
@@ -120,8 +126,8 @@ const bookSeat = async (seat) => {
     return
   }
   await ElMessageBox.confirm(
-    `确认预约座位 ${seat.seat_no}（${date.value} ${startTime.value}-${endTime.value}）？`,
-    '确认预约',
+    `确认申请座位 ${seat.seat_no}（${date.value} ${startTime.value}-${endTime.value}）？`,
+    '确认申请',
     { type: 'info' }
   )
     .then(async () => {
@@ -131,7 +137,7 @@ const bookSeat = async (seat) => {
         start_time: startTime.value,
         end_time: endTime.value
       })
-      if (res.code === 200) ElMessage.success('预约成功')
+      if (res.code === 200) ElMessage.success('申请已提交，等待管理员审批')
     })
     .catch(() => {})
 }

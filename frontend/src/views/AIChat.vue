@@ -2,8 +2,9 @@
     <div>
         <el-card>
             <template #header>
-                <div style="font-size: 16px; font-weight: bold">
-                    <span>AI智能助手</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 16px; font-weight: bold;">AI智能助手</span>
+                    <el-button link type="danger" @click="clearMessages">清空对话</el-button>
                 </div>
             </template>
         
@@ -50,9 +51,8 @@
                     v-model="input"
                     type="textarea"
                     :rows="2"
-                    placeholder="问问怎么预约座位，预先借书籍、开放时间..."
+                    placeholder="例如：帮我预约1楼明天上午9点的座位 / 帮我预借《Python编程》"
                     @keydown.enter.exact.prevent="handleSend"
-                    @keydown.enter.shift.top
                 >
                 </el-input>
                 <el-button type="primary" @click="handleSend" :loading="loading">发送</el-button>
@@ -68,23 +68,75 @@
 
 
 <script setup>
-import { ref, nextTick } from "vue"
+import { ref, nextTick, watch } from "vue"
 import { chatApi } from '@/api/ai'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify' // 过滤危险的 HTML，防止 XSS 攻击
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 
 const loading = ref(false)
 const input = ref('')
 const listRef = ref()
 
+// 兜底：后端异常时不要把工具返回的原始 JSON 渲染到气泡里
+const isToolOutput = (text) => {
+    const raw = (text || '').trim()
+    if (!raw) return false
+    if (raw.includes('<tool_call>') || raw.includes('</tool_call>')) return true
+    if (raw.startsWith('{"ok"')) return true
+    return raw.includes('"ok"') && ['"books"', '"seats"', '"areas"', '"reservations"', '"borrows"', '"action_type"'].some((key) => raw.includes(key))
+}
 
-const messages = ref([
+const STORAGE_KEY = 'lab-agent:ai-chat-messages'
+
+const defaultMessages = () => [
     {role:'assistant',
-    content:'您好，我是图书馆预约智能助手。你可以向我提问怎么预约'}
-])
+    content:'您好，我是图书馆智能助手。你可以这样问我：\n\n- 帮我预约 1 楼明天上午 9 点的座位\n- 帮我预借《Python编程》\n- 我预约了哪些座位？'}
+]
 
+const loadMessages = () => {
+    try {
+        const raw = sessionStorage.getItem(STORAGE_KEY)
+        if (!raw) return defaultMessages()
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) return defaultMessages()
+        const cleaned = parsed.filter(
+            (item) => item && ['user', 'assistant'].includes(item.role) &&
+                typeof item.content === 'string' &&
+                !(item.role === 'assistant' && isToolOutput(item.content))
+        )
+        return cleaned.length ? cleaned : defaultMessages()
+    } catch (error) {
+        console.error('读取 AI 对话记录失败：', error)
+        return defaultMessages()
+    }
+}
 
+const messages = ref(loadMessages())
+
+// 切换页面只卸载组件，不销毁 sessionStorage；重新进入时从缓存恢复
+watch(
+    messages,
+    (value) => {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+        } catch (error) {
+            console.error('保存 AI 对话记录失败：', error)
+        }
+    },
+    { deep: true }
+)
+
+const clearMessages = () => {
+    ElMessageBox.confirm('确定清空当前对话吗？', '提示', { type: 'warning' })
+        .then(() => {
+            messages.value = defaultMessages()
+            sessionStorage.removeItem(STORAGE_KEY)
+            ElMessage.success('已清空')
+        })
+        .catch(() => {})
+}
 
 const scrollToBottom =() => {
     nextTick(() => {
@@ -103,12 +155,22 @@ const handleSend = async () => {
     loading.value = true
     scrollToBottom()
     try {
-        const res = await chatApi({ messages: messages.value })
+        // 历史里如果残留工具 JSON，不要再次发给后端污染上下文
+        const history = messages.value.filter(
+            (item) => !(item.role === 'assistant' && isToolOutput(item.content))
+        )
+        const res = await chatApi({ messages: history })
         if (res.code === 200) {
+            if (isToolOutput(res.data?.content)) {
+                ElMessage.error('AI 返回内容异常，请重试')
+                return
+            }
             messages.value.push(res.data)
             scrollToBottom()
         }
-    } 
+    } catch (error) {
+        console.error('AI 对话请求失败：', error)
+    }
     finally {
         loading.value = false
     }
@@ -116,6 +178,9 @@ const handleSend = async () => {
 
 const parseMarkdown = (text) => {
     if (!text) return ''
+    if (isToolOutput(text)) {
+        return '<p>AI 返回内容异常，请重试。</p>'
+    }
     marked.setOptions({ breaks: true })
     // 使用marked解析，然后用 DOMPurify 清理
     const rawHtml = marked.parse(text)

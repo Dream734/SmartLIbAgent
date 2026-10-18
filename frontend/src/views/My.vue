@@ -19,7 +19,7 @@
             </el-table-column>
             <el-table-column label="操作" width="180">
               <template #default="{ row }">
-                <el-button v-if="row.status === 'reserved'" link type="danger" @click="handleCancelReservation(row)">取消预约</el-button>
+                <el-button v-if="['pending', 'reserved'].includes(row.status)" link type="danger" @click="handleCancelReservation(row)">取消预约</el-button>
                 <el-button v-if="row.status === 'reserved'" link type="primary" @click="handleCheckout(row)">离座</el-button>
               </template>
             </el-table-column>
@@ -42,7 +42,7 @@
             </el-table-column>
             <el-table-column label="操作" width="120">
               <template #default="{ row }">
-                <el-button v-if="row.status === 'reserved'" link type="danger" @click="handleCancelBorrow(row)">取消预借</el-button>
+                <el-button v-if="['pending', 'reserved', 'pickup'].includes(row.status)" link type="danger" @click="handleCancelBorrow(row)">取消预借</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -64,11 +64,11 @@ const borrows = ref([])
 const loadingSeat = ref(false)
 const loadingBook = ref(false)
 
-const seatStatusText = (s) => ({ reserved: '已预约', cancelled: '已取消', finished: '已离座' }[s] || s)
-const seatStatusType = (s) => ({ reserved: 'success', cancelled: 'info', finished: 'warning' }[s] || 'info')
+const seatStatusText = (s) => ({ pending: '待审批', reserved: '已预约', cancelled: '已取消', finished: '已离座' }[s] || s)
+const seatStatusType = (s) => ({ pending: 'warning', reserved: 'success', cancelled: 'info', finished: 'warning' }[s] || 'info')
 
-const borrowStatusText = (s) => ({ reserved: '预借中', pickup: '可取', borrowed: '已借', returned: '已还', cancelled: '已取消' }[s] || s)
-const borrowStatusType = (s) => ({ reserved: 'primary', pickup: 'success', borrowed: 'warning', returned: 'info', cancelled: 'info' }[s] || 'info')
+const borrowStatusText = (s) => ({ pending: '待审批', reserved: '预借中', pickup: '可取', borrowed: '已借', returned: '已还', cancelled: '已取消' }[s] || s)
+const borrowStatusType = (s) => ({ pending: 'warning', reserved: 'primary', pickup: 'success', borrowed: 'warning', returned: 'info', cancelled: 'info' }[s] || 'info')
 
 const formatTime = (t) => (t ? t.replace('T', ' ').slice(0, 16) : '-')
 

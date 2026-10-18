@@ -8,6 +8,6 @@ export function chatApi(data) {
       url: '/api/ai/chat',
       method: 'post',
       data,
-      timeout: 30000
+      timeout: 300000
     })
 }

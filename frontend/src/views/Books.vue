@@ -82,7 +82,7 @@ const load = async () => {
       category_id: params.category_id || undefined
     })
     if (res.code === 200) {
-      tableData.value = res.data?.list
+      tableData.value = res.data?.items
       total.value = res.data?.total
     }
   } finally {
@@ -106,7 +106,7 @@ const borrow = async (row) => {
   try {
     const res = await createBorrow({ book_id: row.id })
     if (res.code === 200) {
-      ElMessage.success('预借成功')
+      ElMessage.success('申请已提交，等待管理员审批')
       load()
     }
   } catch (e) {

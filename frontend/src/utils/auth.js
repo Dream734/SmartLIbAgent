@@ -38,4 +38,6 @@ export function removeUserInfo() {
 export function logout() {
   removeToken()
   removeUserInfo()
+  // 清空 AI 对话缓存，避免下一位登录用户看到上一位的聊天记录
+  sessionStorage.removeItem('lab-agent:ai-chat-messages')
 }

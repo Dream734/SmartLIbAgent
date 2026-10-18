@@ -1,5 +1,5 @@
 from typing import Any
-from  pydantic import BaseModel
+from  pydantic import BaseModel, Field
 
 class Response(BaseModel):
     """统一封装的返回格式"""
@@ -17,6 +17,5 @@ class Response(BaseModel):
 
 
 class PageResponse(BaseModel):
-    list:Any = []
-    total : int = 0
-        
+    items: list = Field(default_factory=list)
+    total: int = 0

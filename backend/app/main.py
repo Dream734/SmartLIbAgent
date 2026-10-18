@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from app.config import UPLOAD_DIR
+from app.config import UPLOAD_DIR, settings
 from app.models import (  # noqa: F401
     User,
     SeatArea,
@@ -10,6 +10,7 @@ from app.models import (  # noqa: F401
     BookCategory,
     Book,
     BorrowRecord,
+    AgentAction,
 )
 from app.database import engine, Base
 from app.api import api
@@ -29,10 +30,7 @@ app = FastAPI()
 
 # 后端跨域配置
 
-origins = (
-    "http://127.0.0.1:5173",
-    "http://localhost:5173"
-)
+origins = tuple(url.strip() for url in settings.CORS_ORIGINS.split(",") if url.strip())
 
 app.add_middleware(
     CORSMiddleware,

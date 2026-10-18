@@ -11,12 +11,11 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False,)
 
 def get_db():
     db = SessionLocal()
-    print("===== 会话已打开 =====")
     try:
         yield db
     finally:
         db.close()
-        print("===== 会话已关闭 =====")
+
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True,comment="主键id")
     create_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")

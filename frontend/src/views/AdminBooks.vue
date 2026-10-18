@@ -108,7 +108,7 @@ const load = async () => {
       category_id: params.category_id || undefined
     })
     if (res.code === 200) {
-      list.value = res.data?.list
+      list.value = res.data?.items
       total.value = res.data?.total
     }
   } finally {

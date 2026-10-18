@@ -39,4 +39,4 @@ class SeatReservation(Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, comment="预约日期")
     start_time: Mapped[str] = mapped_column(String(5), nullable=False, comment="开始时间 HH:MM")
     end_time: Mapped[str] = mapped_column(String(5), nullable=False, comment="结束时间 HH:MM")
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="reserved", comment="状态: reserved已预约/cancelled已取消/finished已离座")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", comment="状态: pending待审批/reserved已预约/cancelled已取消/finished已离座")

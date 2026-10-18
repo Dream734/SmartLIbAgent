@@ -41,7 +41,7 @@ const borrow = async () => {
   try {
     const res = await createBorrow({ book_id: book.value.id })
     if (res.code === 200) {
-      ElMessage.success('预借成功')
+      ElMessage.success('申请已提交，等待管理员审批')
       load()
     }
   } catch (e) {

@@ -40,7 +40,7 @@ class BorrowRecord(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, comment="用户id")
     book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False, comment="图书id")
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="reserved", comment="状态: reserved预借中/pickup可取/borrowed已借/returned已还/cancelled已取消")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", comment="状态: pending待审批/reserved预借中/pickup可取/borrowed已借/returned已还/cancelled已取消")
     expire_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="预借过期时间")
     borrow_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="借出时间")
     return_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="归还时间")

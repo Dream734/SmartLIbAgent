@@ -132,7 +132,7 @@ const load = async () => {
       keywords: params.keywords
     })
     if (res.code === 200) {
-      tableData.value = res.data?.list
+      tableData.value = res.data?.items
       total.value = res.data?.total
     }
   } finally {

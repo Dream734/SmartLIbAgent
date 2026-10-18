@@ -51,6 +51,14 @@ export function cancelBorrow(id) {
   return request({ url: `/api/book/borrows/${id}/cancel`, method: 'post' })
 }
 
+export function approveBorrow(id) {
+  return request({ url: `/api/book/borrows/${id}/approve`, method: 'post' })
+}
+
+export function rejectBorrow(id) {
+  return request({ url: `/api/book/borrows/${id}/reject`, method: 'post' })
+}
+
 export function getBorrowPageList(params) {
   return request({ url: '/api/book/borrows', method: 'get', params })
 }

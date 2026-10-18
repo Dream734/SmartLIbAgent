@@ -82,6 +82,16 @@ def cancel_borrow(borrow_id: int, current_user: User = Depends(get_current_user)
     return Response.success(data=book_service.cancel_borrow(db, current_user, borrow_id))
 
 
+@router.post("/borrows/{borrow_id}/approve", summary="审批通过图书预借")
+def approve_borrow(borrow_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return Response.success(data=book_service.approve_borrow(db, borrow_id))
+
+
+@router.post("/borrows/{borrow_id}/reject", summary="驳回图书预借")
+def reject_borrow(borrow_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return Response.success(data=book_service.reject_borrow(db, borrow_id))
+
+
 @router.get("/borrows", summary="借阅列表(管理员)")
 def get_borrows(page: int = 1, page_size: int = 10, status: str | None = None, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     return Response.success(data=book_service.get_borrow_page_list(db, page, page_size, status))

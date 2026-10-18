@@ -8,9 +8,12 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str 
     JWT_EXPIRE_HOURS: int = 24
     JWT_ALGORITHM: str = "HS256"
+    CORS_ORIGINS: str = "http://127.0.0.1:5173,http://localhost:5173"
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = "https://api.openai.com/v1"
     LLM_MODEL: str = "gpt-4o-mini"
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_MODEL: str = "bge-m3:latest"
 
 
     model_config = SettingsConfigDict(env_file=Base_DIR / ".env", env_file_encoding="utf-8")

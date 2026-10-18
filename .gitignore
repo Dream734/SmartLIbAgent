@@ -29,3 +29,10 @@ pnpm-debug.log*
 # 上传文件目录（运行时生成，不入库）
 backend/uploads/
 
+# 知识库向量缓存（运行时生成，不入库）
+backend/data/kb/
+
+# 临时 Agent 验证脚本
+backend/_manual_*.py
+backend/_debug_*.py
+

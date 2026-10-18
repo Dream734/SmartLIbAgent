@@ -89,7 +89,7 @@ def get_book_page_list(db: Session, page: int, page_size: int, keywords: str | N
         resp = BookResponse.model_validate(book)
         resp.category_name = category_name
         items.append(resp)
-    return PageResponse(list=items, total=total)
+    return PageResponse(items=items, total=total)
 
 
 def get_book_detail(db: Session, book_id: int):
@@ -136,7 +136,7 @@ def delete_book(db: Session, book_id: int):
         raise BusinessException(message="图书不存在")
     active = (
         db.query(BorrowRecord)
-        .filter(BorrowRecord.book_id == book_id, BorrowRecord.status.in_(["reserved", "pickup", "borrowed"]))
+        .filter(BorrowRecord.book_id == book_id, BorrowRecord.status.in_(["pending", "reserved", "pickup", "borrowed"]))
         .first()
     )
     if active:
@@ -147,12 +147,12 @@ def delete_book(db: Session, book_id: int):
 
 # ========== 预借/借阅 ==========
 def _expire_overdue_borrows(db: Session):
-    """惰性过期：预借超过 2 天未取自动取消并释放库存"""
+    """惰性过期：待审批或预借超过 2 天未处理自动取消并释放库存"""
     now = datetime.now()
     overdue = (
         db.query(BorrowRecord)
         .filter(
-            BorrowRecord.status == "reserved",
+            BorrowRecord.status.in_(["pending", "reserved"]),
             BorrowRecord.expire_time.isnot(None),
             BorrowRecord.expire_time < now,
         )
@@ -168,9 +168,17 @@ def _expire_overdue_borrows(db: Session):
     db.commit()
 
 
-def create_borrow(db: Session, user: User, data: BorrowCreateRequest):
-    _expire_overdue_borrows(db)
-    book = db.query(Book).filter(Book.id == data.book_id).first()
+def check_borrow(
+    db: Session,
+    user: User,
+    data: BorrowCreateRequest,
+    for_update: bool = False,
+):
+    """只做预借校验，不扣库存、不写借阅表。"""
+    book_query = db.query(Book).filter(Book.id == data.book_id)
+    if for_update:
+        book_query = book_query.with_for_update()
+    book = book_query.first()
     if not book or book.status != 1:
         raise BusinessException(message="图书不存在或已下架")
     if book.available <= 0:
@@ -180,18 +188,25 @@ def create_borrow(db: Session, user: User, data: BorrowCreateRequest):
         .filter(
             BorrowRecord.user_id == user.id,
             BorrowRecord.book_id == data.book_id,
-            BorrowRecord.status.in_(["reserved", "pickup", "borrowed"]),
+            BorrowRecord.status.in_(["pending", "reserved", "pickup", "borrowed"]),
         )
         .first()
     )
     if exist:
         raise BusinessException(message="你已预借或借阅该图书")
 
+    return book
+
+
+def create_borrow(db: Session, user: User, data: BorrowCreateRequest):
+    _expire_overdue_borrows(db)
+    book = check_borrow(db, user, data, for_update=True)
+
     book.available -= 1
     record = BorrowRecord(
         user_id=user.id,
         book_id=data.book_id,
-        status="reserved",
+        status="pending",
         expire_time=datetime.now() + timedelta(days=BORROW_RESERVE_DAYS),
     )
     db.add(record)
@@ -224,13 +239,49 @@ def cancel_borrow(db: Session, user: User, borrow_id: int):
         raise BusinessException(message="记录不存在")
     if record.user_id != user.id:
         raise BusinessException(message="无权操作该记录")
-    if record.status != "reserved":
-        raise BusinessException(message="该预借不可取消")
+    # 幂等：已经取消/刚被惰性过期清理的记录，直接返回成功，避免用户点取消时提示“不可取消”
+    if record.status == "cancelled":
+        return BorrowRecordResponse.model_validate(record)
+    # pickup 表示书已到馆但用户还没取走，仍允许取消并释放库存
+    if record.status not in ("pending", "reserved", "pickup"):
+        raise BusinessException(message="该预借当前状态不可取消")
     record.status = "cancelled"
     book = db.query(Book).filter(Book.id == record.book_id).first()
     if book:
         book.available += 1
     db.commit()
+    return BorrowRecordResponse.model_validate(record)
+
+
+def approve_borrow(db: Session, borrow_id: int):
+    """管理员审批通过图书预借"""
+    _expire_overdue_borrows(db)
+    record = db.query(BorrowRecord).filter(BorrowRecord.id == borrow_id).first()
+    if not record:
+        raise BusinessException(message="记录不存在")
+    if record.status != "pending":
+        raise BusinessException(message="该申请已处理")
+    record.status = "reserved"
+    record.expire_time = datetime.now() + timedelta(days=BORROW_RESERVE_DAYS)
+    db.commit()
+    db.refresh(record)
+    return BorrowRecordResponse.model_validate(record)
+
+
+def reject_borrow(db: Session, borrow_id: int):
+    """管理员驳回图书预借"""
+    _expire_overdue_borrows(db)
+    record = db.query(BorrowRecord).filter(BorrowRecord.id == borrow_id).first()
+    if not record:
+        raise BusinessException(message="记录不存在")
+    if record.status != "pending":
+        raise BusinessException(message="该申请已处理")
+    record.status = "cancelled"
+    book = db.query(Book).filter(Book.id == record.book_id).first()
+    if book:
+        book.available += 1
+    db.commit()
+    db.refresh(record)
     return BorrowRecordResponse.model_validate(record)
 
 
@@ -256,15 +307,18 @@ def get_borrow_page_list(db: Session, page: int, page_size: int, status: str | N
         resp.book_title = title
         resp.username = username
         items.append(resp)
-    return PageResponse(list=items, total=total)
+    return PageResponse(items=items, total=total)
 
 
 def update_borrow_status(db: Session, borrow_id: int, status: str):
+    _expire_overdue_borrows(db)
     if status not in ("pickup", "borrowed", "returned"):
         raise BusinessException(message="无效的状态")
     record = db.query(BorrowRecord).filter(BorrowRecord.id == borrow_id).first()
     if not record:
         raise BusinessException(message="记录不存在")
+    if record.status == "pending":
+        raise BusinessException(message="该预借申请尚未审批，请先通过或驳回")
     if status == "borrowed" and record.borrow_time is None:
         record.borrow_time = datetime.now()
     if status == "returned" and record.status != "returned":

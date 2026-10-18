@@ -51,7 +51,7 @@ def get_user_page_list(
         .all()
     )  # order_by 必须在 offset/limit 之前调用。
     return PageResponse(
-        list =[UserResponse.model_validate(item) for item in items],total = total
+        items=[UserResponse.model_validate(item) for item in items],total = total
     )
 
 

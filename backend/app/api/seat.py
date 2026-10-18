@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -41,8 +43,14 @@ def delete_area(area_id: int, current_user: User = Depends(get_current_admin), d
 
 # ========== 座位 ==========
 @router.get("/seats", summary="座位列表")
-def get_seats(area_id: int | None = None, db: Session = Depends(get_db)):
-    return Response.success(data=seat_service.get_seat_list(db, area_id))
+def get_seats(
+    area_id: int | None = None,
+    date: date | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return Response.success(data=seat_service.get_seat_list(db, area_id, date, start_time, end_time))
 
 
 @router.post("/seats", summary="新增座位")
@@ -80,6 +88,16 @@ def cancel_reservation(reservation_id: int, current_user: User = Depends(get_cur
 @router.post("/reservations/{reservation_id}/checkout", summary="离座")
 def checkout_reservation(reservation_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return Response.success(data=seat_service.checkout_reservation(db, current_user, reservation_id))
+
+
+@router.post("/reservations/{reservation_id}/approve", summary="审批通过座位预约")
+def approve_reservation(reservation_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return Response.success(data=seat_service.approve_reservation(db, reservation_id))
+
+
+@router.post("/reservations/{reservation_id}/reject", summary="驳回座位预约")
+def reject_reservation(reservation_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return Response.success(data=seat_service.reject_reservation(db, reservation_id))
 
 
 @router.get("/reservations", summary="所有预约(管理员)")

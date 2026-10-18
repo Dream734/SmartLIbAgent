@@ -67,12 +67,21 @@
               <el-menu-item index="/admin/seats">座位管理</el-menu-item>
               <el-menu-item index="/admin/categories">分类管理</el-menu-item>
               <el-menu-item index="/admin/books">图书管理</el-menu-item>
-              <el-menu-item index="/admin/borrows">借阅处理</el-menu-item>
             </el-sub-menu>
 
             <el-menu-item index="/user" v-if="userInfo?.role === 'admin'">
               <el-icon><User /></el-icon>
               <span>用户管理</span>
+            </el-menu-item>
+
+            <el-menu-item index="/admin/reservations" v-if="userInfo?.role === 'admin'">
+              <el-icon><Tickets /></el-icon>
+              <span>座位审批</span>
+            </el-menu-item>
+
+            <el-menu-item index="/admin/borrows" v-if="userInfo?.role === 'admin'">
+              <el-icon><Collection /></el-icon>
+              <span>借阅处理</span>
             </el-menu-item>
           </el-menu>
         </el-aside>
