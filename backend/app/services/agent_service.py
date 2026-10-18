@@ -14,7 +14,7 @@ import logging
 import re
 from datetime import datetime
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import ToolRuntime, create_react_agent
 
@@ -610,3 +610,117 @@ def chat(user: User, data: ChatRequest) -> ChatMessage:
         reply = _remove_unbacked_confirmation(reply)
 
     return ChatMessage(role="assistant", content=reply)
+
+
+def _sse_data(payload: dict) -> str:
+    """把事件字典序列化成 SSE 的 data 行。"""
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+TOOL_LABELS = {
+    "list_areas": "正在查看阅览区",
+    "query_available_seats": "正在查询可预约座位",
+    "query_my_seat_reservations": "正在查询我的座位预约",
+    "list_book_categories": "正在查看图书分类",
+    "search_books": "正在搜索图书",
+    "get_book_detail": "正在查看图书详情",
+    "query_my_borrows": "正在查询我的预借",
+    "search_knowledge_base": "正在检索知识库",
+    "prepare_seat_reservation": "正在匹配座位并生成预约申请",
+    "confirm_seat_reservation": "正在提交座位预约",
+    "prepare_book_borrow": "正在生成图书预借申请",
+    "confirm_book_borrow": "正在提交图书预借",
+    "cancel_pending_action": "正在取消待确认操作",
+    "cancel_my_book_borrow": "正在取消图书预借",
+    "cancel_my_seat_reservation": "正在取消座位预约",
+}
+
+
+async def chat_stream(user: User, data: ChatRequest):
+    """SSE 流式输出纯文本回复。
+
+    事件类型：
+    - thinking: Agent 的工具调用过程（用于前端灰色小字展示）
+    - token: 文本增量
+    - done: 本轮完成，附带最终 assistant 消息
+    - error: 执行出错
+    """
+    history = _to_lc_messages(data)
+
+    # 确认/取消等确定性回复也走同一条流，按小块输出保持流式体验
+    direct_reply = _try_direct_booking(user, history)
+    if direct_reply is not None:
+        for i in range(0, len(direct_reply.content), 4):
+            yield _sse_data(
+                {"type": "token", "content": direct_reply.content[i : i + 4]}
+            )
+        yield _sse_data({"type": "done", "message": direct_reply.model_dump()})
+        return
+
+    agent = _build_agent(user)
+    config = {
+        "configurable": {"user_id": user.id},
+        "recursion_limit": MAX_AGENT_STEPS,
+    }
+
+    parts: list[str] = []
+    seen_tool_calls: set[str] = set()
+    try:
+        async for stream_mode, payload in agent.astream(
+            {"messages": history},
+            config=config,
+            stream_mode=["messages", "updates"],
+        ):
+            if stream_mode == "messages":
+                message, _metadata = payload
+                if isinstance(message, AIMessageChunk):
+                    text = _content_to_text(message.content)
+                    if text:
+                        parts.append(text)
+                        yield _sse_data({"type": "token", "content": text})
+            elif stream_mode == "updates":
+                for node_output in payload.values():
+                    if not isinstance(node_output, dict):
+                        continue
+                    for message in node_output.get("messages") or []:
+                        if not isinstance(message, AIMessage):
+                            continue
+                        for call in message.tool_calls or []:
+                            name = call.get("name")
+                            if not name:
+                                continue
+                            call_key = call.get("id") or name
+                            if call_key in seen_tool_calls:
+                                continue
+                            seen_tool_calls.add(call_key)
+                            label = TOOL_LABELS.get(name)
+                            if label:
+                                yield _sse_data(
+                                    {"type": "thinking", "content": f"{label}…"}
+                                )
+    except Exception as exc:
+        logger.exception("Agent 流式执行失败: %s", exc)
+        yield _sse_data({"type": "error", "message": _friendly_error(exc)})
+        return
+
+    reply = "".join(parts).strip()
+    if not reply:
+        yield _sse_data(
+            {"type": "error", "message": "助手没有返回内容，请换个问法再试。"}
+        )
+        return
+
+    if _looks_like_tool_output(reply):
+        logger.warning("检测到工具结果被直接返回，已拦截: user_id=%s", user.id)
+        reply = "抱歉，刚才的查询结果格式异常，请再问一次。"
+
+    pending_seat, pending_book = _pending_action_flags(user.id)
+    if not (pending_seat or pending_book):
+        reply = _remove_unbacked_confirmation(reply)
+
+    yield _sse_data(
+        {
+            "type": "done",
+            "message": ChatMessage(role="assistant", content=reply).model_dump(),
+        }
+    )

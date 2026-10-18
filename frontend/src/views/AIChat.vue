@@ -41,8 +41,16 @@
                             lineHeight: '1.6',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
                         }"
-                        v-html="parseMarkdown(item.content)"
-                    ></div>
+                    >
+                        <div v-if="item.thinking" class="thinking-wrap">
+                            <div v-if="item.thinkingCollapsed" class="thinking-toggle" @click="toggleThinking(index)">思考过程</div>
+                            <template v-else>
+                                <div class="thinking-toggle" @click="toggleThinking(index)">收起思考过程</div>
+                                <div class="thinking">{{ item.thinking }}</div>
+                            </template>
+                        </div>
+                        <div v-html="parseMarkdown(item.content)"></div>
+                    </div>
                 </div>
             </div>
             <!-- 输入框 -->
@@ -69,7 +77,7 @@
 
 <script setup>
 import { ref, nextTick, watch } from "vue"
-import { chatApi } from '@/api/ai'
+import { chatStream } from '@/api/ai'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify' // 过滤危险的 HTML，防止 XSS 攻击
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -78,6 +86,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const loading = ref(false)
 const input = ref('')
 const listRef = ref()
+const abortController = ref(null)
 
 // 兜底：后端异常时不要把工具返回的原始 JSON 渲染到气泡里
 const isToolOutput = (text) => {
@@ -131,6 +140,7 @@ watch(
 const clearMessages = () => {
     ElMessageBox.confirm('确定清空当前对话吗？', '提示', { type: 'warning' })
         .then(() => {
+            abortController.value?.abort()
             messages.value = defaultMessages()
             sessionStorage.removeItem(STORAGE_KEY)
             ElMessage.success('已清空')
@@ -154,26 +164,69 @@ const handleSend = async () => {
     input.value = ''
     loading.value = true
     scrollToBottom()
-    try {
-        // 历史里如果残留工具 JSON，不要再次发给后端污染上下文
-        const history = messages.value.filter(
+
+    // 历史里如果残留工具 JSON，不要再次发给后端污染上下文
+    const history = messages.value
+        .filter(
             (item) => !(item.role === 'assistant' && isToolOutput(item.content))
         )
-        const res = await chatApi({ messages: history })
-        if (res.code === 200) {
-            if (isToolOutput(res.data?.content)) {
-                ElMessage.error('AI 返回内容异常，请重试')
-                return
+        .map((item) => ({ role: item.role, content: item.content }))
+
+    messages.value.push({ role: 'assistant', content: '', thinking: '', thinkingCollapsed: false })
+    const assistantIndex = messages.value.length - 1
+    scrollToBottom()
+
+    const controller = new AbortController()
+    abortController.value = controller
+
+    try {
+        await chatStream(
+            { messages: history },
+            {
+                signal: controller.signal,
+                onThinking: (content) => {
+                    const thinking = messages.value[assistantIndex].thinking
+                    messages.value[assistantIndex].thinking =
+                        (thinking ? `${thinking}\n` : '') + content
+                    scrollToBottom()
+                },
+                onToken: (content) => {
+                    messages.value[assistantIndex].content += content
+                    if (
+                        messages.value[assistantIndex].thinking &&
+                        !messages.value[assistantIndex].thinkingCollapsed
+                    ) {
+                        messages.value[assistantIndex].thinkingCollapsed = true
+                    }
+                    scrollToBottom()
+                },
+                onDone: (message) => {
+                    messages.value[assistantIndex].content =
+                        message?.content || messages.value[assistantIndex].content
+                    scrollToBottom()
+                },
+                onError: (message) => {
+                    throw new Error(message || 'AI 回答失败')
+                }
             }
-            messages.value.push(res.data)
-            scrollToBottom()
-        }
+        )
     } catch (error) {
-        console.error('AI 对话请求失败：', error)
-    }
-    finally {
+        if (error.name === 'AbortError') return
+        if (!messages.value[assistantIndex].content) {
+            messages.value[assistantIndex].content = 'AI 回答失败，请稍后重试。'
+        } else if (isToolOutput(messages.value[assistantIndex].content)) {
+            messages.value[assistantIndex].content = 'AI 返回内容异常，请重试。'
+        }
+        ElMessage.error(error.message || 'AI 对话请求失败')
+        console.error('AI 流式对话请求失败：', error)
+    } finally {
         loading.value = false
+        abortController.value = null
     }
+}
+
+const toggleThinking = (index) => {
+    messages.value[index].thinkingCollapsed = !messages.value[index].thinkingCollapsed
 }
 
 const parseMarkdown = (text) => {
@@ -201,5 +254,21 @@ const parseMarkdown = (text) => {
 .bubble :deep(ul),
 .bubble :deep(ol) {
     padding-left: 1.2em;
+}
+
+.thinking {
+    font-size: 12px;
+    color: #999;
+    white-space: pre-wrap;
+    margin-bottom: 8px;
+    padding-left: 8px;
+    border-left: 3px solid #dcdfe6;
+}
+
+.thinking-toggle {
+    font-size: 12px;
+    color: #999;
+    cursor: pointer;
+    margin-bottom: 6px;
 }
 </style>

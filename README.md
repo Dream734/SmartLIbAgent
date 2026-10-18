@@ -8,13 +8,13 @@
 - 座位预约：申请 → 管理员审批 → 预约/取消/离座，冲突时段自动拦截，超时未审批自动取消。
 - 图书预借：分类/图书管理、封面上传、预借保留 2 天、审批与借阅状态流转。
 - 用户管理：注册登录、JWT 鉴权、管理员增删改查用户、修改密码。
-- AI 智能助手：LangGraph Agent 查询座位/图书/我的预约，并支持两阶段确认预约与预借。
+- AI 智能助手：LangGraph Agent 查询座位/图书/我的预约，支持两阶段确认预约与预借，回复使用 SSE 流式输出并展示推演过程。
 - 知识库 RAG：读取 `backend/data/db/*.md` 规则文档，通过 Ollama 向量模型检索。
 
 ## 技术栈
 
-- 后端：FastAPI、SQLAlchemy 2、PyMySQL、PyJWT、bcrypt、LangGraph、LangChain、ChromaDB
-- 前端：Vue 3、Vite、Vue Router、Element Plus、Axios、marked + DOMPurify
+- 后端：FastAPI、SQLAlchemy 2、PyMySQL、PyJWT、bcrypt、LangGraph、LangChain、ChromaDB、SSE（StreamingResponse）
+- 前端：Vue 3、Vite、Vue Router、Element Plus、Axios、marked + DOMPurify、SSE 流式读取（fetch ReadableStream）
 - 数据库：MySQL
 - 本地模型：Ollama（`qwen2.5:7b` 用于对话/工具调用，`bge-m3` 用于向量化）
 
@@ -133,6 +133,12 @@ OLLAMA_MODEL=bge-m3
 3. 知识库文档放在 `backend/data/db/*.md`，首次检索时会向量化，稍慢属于正常现象。
 
 > 注意：Agent 依赖 Function Calling，请使用支持 `tools` 的模型（如 `qwen2.5:7b`）。`deepseek-r1:7b` 只支持普通文本生成，不适合本项目的 Agent。
+
+### SSE 流式接口
+
+- `POST /api/ai/chat/stream`：以 `text/event-stream` 逐步返回 `thinking`（推演过程）、`token`（正文增量）、`done`、`error` 事件。
+- 前端 `AIChat.vue` 先用灰色小字展示推演过程，正式回答开始后自动折叠为“思考过程”，并逐字渲染正文。
+- 旧接口 `POST /api/ai/chat` 保留，仍返回一次性完整回答。
 
 ## 默认账号
 
